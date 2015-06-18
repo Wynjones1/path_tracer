@@ -100,13 +100,21 @@ int render(void *input)
         for(auto j = xstart; j < xend; j++)
         {
             Ray initial_ray = scene->camera->Emit(j / (float)width, (height - i) / (float)height);
-            for(auto object : scene->objects)
+			uint32_t &pixel = framebuffer[i * width + j];
+			if(scene->Intersects(initial_ray, info))
+			{
+				pixel = 0xffffffff;
+			}
+            else
             {
-				uint32_t &pixel = framebuffer[i * width + j];
-                if(object->Intersects(initial_ray, info))
-                {
-					if(KDMesh *mesh = dynamic_cast<KDMesh*>(object))
-					{
+				pixel = 0x555555ff;
+            }
+        }
+        static uint32_t count = 0;
+    }
+	return 0;
+}
+#if 0
 						if(mesh->has_normals)
 						{
 							auto v0 = mesh->normals[info.triangle[0]];
@@ -124,22 +132,7 @@ int render(void *input)
 						{
 							pixel = RGBA(0xff, 0xff, 0xff, 0xff);
 						}
-					}
-					else
-					{
-						pixel = 0xffffffff;
-					}
-                }
-                else
-                {
-					pixel = 0x555555ff;
-                }
-            }
-        }
-        static uint32_t count = 0;
-    }
-	return 0;
-}
+#endif
 
 int main(int argc, char **argv)
 {
