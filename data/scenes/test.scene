@@ -1,0 +1,22 @@
+{
+	"objects" : [
+		{"ply" : "bunny_unit.ply"}
+	],
+
+	"lights" : [
+		{"point" : {
+				"origin"    : [0, 3, 0],
+				"intensity" : [1, 1, 1]
+			}
+		}
+	],
+
+	"camera" : {
+		"type"    : "ortho",
+		"width"   : 7.0,
+		"height"  : 7.0,
+		"origin"  : [0, 0, 10],
+		"forward" : [0, 0, -1],
+		"right"   : [1, 0, 0]
+	}
+}

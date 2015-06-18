@@ -15,11 +15,11 @@ public:
         {
             SDL_Init(SDL_INIT_EVERYTHING);
         }
-        window   = SDL_CreateWindow(title, 0, 0, width, height, 0);
+        window   = SDL_CreateWindow(title, 30, 30, width, height, 0);
         renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
         texture  = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING, width, height);
         SDL_RenderSetLogicalSize(renderer, width, height);
-        SDL_ShowCursor(SDL_DISABLE);
+        //SDL_ShowCursor(SDL_DISABLE);
     }
 
     void HandleEvents(void)

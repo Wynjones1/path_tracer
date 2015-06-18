@@ -8,7 +8,7 @@ public:
     virtual Ray Emit(float x, float y) = 0;
 };
 
-class OrthoCamera
+class OrthoCamera : public Camera
 {
 public:
     OrthoCamera(const glm::vec3 &origin, const glm::vec3 &forward, const glm::vec3 &right, float width, float height)
@@ -50,9 +50,17 @@ private:
     float     height;
 };
 
-class PerspectiveCamera
+class PerspectiveCamera : public Camera
 {
 public:
+	PerspectiveCamera()
+	: origin(0, 0, 0)
+	, forward(0, 0, -1)
+	, right(1, 0, 0)
+	, fov(1.0)
+	{
+
+	}
     PerspectiveCamera(const glm::vec3 &origin, const glm::vec3 &forward, const glm::vec3 &right, float fov)
     : origin(origin)
     , forward(forward)
@@ -64,7 +72,7 @@ public:
     {
         Ray ray;
         ray.origin = origin;
-        ray.direction = {-1.0f + 2 * x, -1.0f + 2 * y, -1};
+        ray.direction = glm::vec3(-1.0f + 2 * x, -1.0f + 2 * y, -1);
         ray.direction = glm::normalize(ray.direction);
         return ray;
     }

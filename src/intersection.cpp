@@ -3,9 +3,11 @@
 
 namespace Intersections
 {
-    bool RayTri(const Ray &ray, const idx_vec3 indices, const glm::vec3 vertices[], Intersection &info)
+	KDNode *g_trace_node = NULL;
+
+    bool RayTri(const Ray &ray, const idx_vec3 indices, const glm::vec3 vertices[], Record &info)
     {
-        info.type = Intersection::Type::Triangle;
+        info.type = Record::Type::Triangle;
         const glm::vec3 &v0 = vertices[indices[0]];
         const glm::vec3 &v1 = vertices[indices[1]];
         const glm::vec3 &v2 = vertices[indices[2]];
@@ -49,9 +51,9 @@ namespace Intersections
         return true;
     }
 
-    bool RaySphere(const Ray &ray, const Sphere &sphere, Intersection &info)
+    bool RaySphere(const Ray &ray, const Sphere &sphere, Record &info)
     {
-        info.type = Intersection::Type::Sphere;
+        info.type = Record::Type::Sphere;
         float a = glm::dot(ray.direction, ray.direction);
         glm::vec3 origin = ray.origin - sphere.origin;
         float b = 2 * glm::dot(origin, ray.direction);
@@ -85,11 +87,11 @@ namespace Intersections
         return true;
     }
 
-    bool RayAABB(const Ray &ray, const AABB &bounds, Intersection &info)
+    bool RayAABB(const Ray &ray, const AABB &bounds, Record &info)
     {
-        info.tmin = std::numeric_limits<float>().min();
-        info.tmax = std::numeric_limits<float>().max();
-        info.type = Intersections::Intersection::AABB;
+        info.tmin = - std::numeric_limits<float>().max();
+        info.tmax =   std::numeric_limits<float>().max();
+        info.type = Intersections::Record::AABB;
         for(auto i = 0; i < 3; i++)
         {
             auto t1 = (bounds.min[i]  - ray.origin[i]) / ray.direction[i];
@@ -119,9 +121,15 @@ namespace Intersections
                     const KDNode &node,
                     const AABB   &bounds,
                     const std::vector<glm::vec3> vertices,
-                    Intersection &info)
+                    Record &info)
     {
-        Intersection tri_info;
+#if KDTREE_DEBUG
+		if(g_trace_node && (&node == g_trace_node))
+		{
+			printf("");
+		}
+#endif
+        Record tri_info;
         info.t = std::numeric_limits<float>().max();
         bool retval = false;
         for(auto &f : node.faces)
@@ -140,9 +148,10 @@ namespace Intersections
                     {
                         continue;
                     }
-                    info      = tri_info;
-                    info.type = Intersection::Mesh;
-                    retval    = true;
+                    info          = tri_info;
+                    info.type     = Record::Mesh;
+					info.triangle = f;
+                    retval        = true;
                 }
             }
         }
@@ -152,9 +161,15 @@ namespace Intersections
     bool RayKDNode( const Ray    &ray,
                     const KDNode &node,
                     const AABB   &bounds,
-                    const std::vector<glm::vec3> vertices,
-                    Intersection &info)
+                    const std::vector<glm::vec3> &vertices,
+                    Record &info)
     {
+#if KDTREE_DEBUG
+		if(g_trace_node && g_trace_node->is_ancestor(&node))
+		{
+			printf("");
+		}
+#endif
         if(RayAABB(ray, bounds, info))
         {
             if(node.leaf)
@@ -177,28 +192,70 @@ namespace Intersections
                 AABB far_bounds    = bounds;
                 if(on_left)
                 {
-                    near_bounds.max[axis] = tsplit;
-                    far_bounds.min[axis]  = tsplit;
+                    near_bounds.max[axis] = node.split;
+                    far_bounds.min[axis]  = node.split;
                 }
                 else
                 {
-                    near_bounds.min[axis] = tsplit;
-                    far_bounds.max[axis]  = tsplit;
+                    near_bounds.min[axis] = node.split;
+                    far_bounds.max[axis]  = node.split;
                 }
-#if 1
+#if 0
                 if( RayKDNode(ray, near, near_bounds, vertices, info) ||
                     RayKDNode(ray, far, far_bounds, vertices, info))
                 {
                     return true;
                 }
 #else
+				if(tsplit == 0.0f)
+				{
+					if(ray.direction[axis] < 0.0f)
+					{
+						if(RayKDNode(ray, near, near_bounds, vertices, info)) return true;
+					}
+					else
+					{
+						if(RayKDNode(ray, far, far_bounds, vertices, info)) return true;
+					}
+				}
+				else if(tsplit >= tmax)
+				{
+					if(RayKDNode(ray, near, near_bounds, vertices, info)) return true;
+				}
+				else if(tsplit < tmin)
+				{
+					if(tsplit > 0.0f)
+					{
+						if(RayKDNode(ray, far, far_bounds, vertices, info)) return true;
+					}
+					else
+					{
+						if(RayKDNode(ray, near, near_bounds, vertices, info)) return true;
+					}
+				}
+				else if(tmin <= tsplit && tsplit < tmax)
+				{
+					if(tsplit > 0)
+					{	
+						if(RayKDNode(ray, near, near_bounds, vertices, info)) return true;
+						if(RayKDNode(ray, far, far_bounds, vertices, info)) return true;
+					}
+					else
+					{
+						if(RayKDNode(ray, near, near_bounds, vertices, info)) return true;
+					}
+				}
+				else if(ray.direction[axis] == 0.0f)
+				{
+					if(RayKDNode(ray, near, near_bounds, vertices, info)) return true;
+				}
 #endif
             }
         }
         return false;
     }
 
-    bool RayKDTree(const Ray &ray, const KDTree &tree, Intersection &info)
+    bool RayKDTree(const Ray &ray, const KDTree &tree, Record &info)
     {
         //    return RayKDTreeNode(ray, tree.node, tree.bounds, tree.vertices, info);
         if(RayAABB(ray, tree.bounds, info))
@@ -213,6 +270,7 @@ namespace Intersections
         }
         return false;
     }
+
 };
 
 

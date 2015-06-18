@@ -1,5 +1,4 @@
 #include <iostream>
-#include <pthread.h>
 #include <vector>
 #include "SDL.h"
 #include "aabb.h"
@@ -12,34 +11,38 @@
 #include "mesh.h"
 #include "sphere.h"
 #include "kdtree.h"
+#include "ply.h"
+#include "scene.h"
 
 #define RGBA(r, g, b, a) ((r) << 24 | (g) << 16 | (b) << 8 | (a))
 
-#define TRACE_PIXEL   1
+#define TRACE_PIXEL   0
 #define TRACE_PIXEL_X (640 / 2 - 10)
 #define TRACE_PIXEL_Y (480 / 2)
 
 struct render_input_t
 {
-    uint32_t        width;
-    uint32_t        height;
-    uint32_t        xstart;
-    uint32_t        xend;
-    uint32_t        ystart;
-    uint32_t        yend;
-    uint32_t       *framebuffer;
-    pthread_cond_t  &cond;
-    pthread_mutex_t &mutex;
+    uint32_t    width;
+    uint32_t    height;
+    uint32_t    xstart;
+    uint32_t    xend;
+    uint32_t    ystart;
+    uint32_t    yend;
+    uint32_t   *framebuffer;
+	SDL_cond   *cond;
+	SDL_mutex  *mutex;
+	Scene      *scene;
 
-    render_input_t(uint32_t width,
-                   uint32_t height,
-                   uint32_t xstart,
-                   uint32_t xend,
-                   uint32_t ystart,
-                   uint32_t yend,
-                   uint32_t *framebuffer,
-                   pthread_cond_t &cond,
-                   pthread_mutex_t &mutex)
+    render_input_t(uint32_t    width,
+                   uint32_t    height,
+                   uint32_t    xstart,
+                   uint32_t    xend,
+                   uint32_t    ystart,
+                   uint32_t    yend,
+                   uint32_t   *framebuffer,
+                   SDL_cond   *cond,
+                   SDL_mutex  *mutex,
+				   Scene      *scene)
     : width(width)
     , height(height)
     , xstart(xstart)
@@ -49,151 +52,140 @@ struct render_input_t
     , framebuffer(framebuffer)
     , cond(cond)
     , mutex(mutex)
+	, scene(scene)
     {}
 };
 
-void *render(void *input)
+int test_render(void *input)
 {
-    uint32_t width = ((render_input_t*)input)->width;
-    uint32_t height = ((render_input_t*)input)->height;
-    uint32_t xstart = ((render_input_t*)input)->xstart;
-    uint32_t ystart = ((render_input_t*)input)->ystart;
-    uint32_t xend   = ((render_input_t*)input)->xend;
-    uint32_t yend   = ((render_input_t*)input)->yend;
+	return 0;
+}
+
+int pixel_trace(void *input)
+{
+	uint32_t width        = ((render_input_t*)input)->width;
+    uint32_t height       = ((render_input_t*)input)->height;
+    uint32_t xstart       = ((render_input_t*)input)->xstart;
+    uint32_t ystart       = ((render_input_t*)input)->ystart;
+    uint32_t xend         = ((render_input_t*)input)->xend;
+    uint32_t yend         = ((render_input_t*)input)->yend;
     uint32_t *framebuffer = ((render_input_t*)input)->framebuffer;
+	Scene *scene          = ((render_input_t*)input)->scene;
+	
+	SDL_LockMutex(((render_input_t*)input)->mutex);
+	throw std::exception("Pixel Trace is not implemented.");
 
-    pthread_mutex_lock(&((render_input_t*)input)->mutex);
-    pthread_cond_signal(&((render_input_t*)input)->cond);
-    pthread_mutex_unlock(&((render_input_t*)input)->mutex);
+	SDL_CondSignal(((render_input_t*)input)->cond);
+	SDL_UnlockMutex(((render_input_t*)input)->mutex);
+}
 
-    glm::vec3 pos     = {0, 0, 3};
-    glm::vec3 forward = {0, 0, -1};
-    glm::vec3 right   = {1, 0,  0};
-    float cam_width   = 1.0f;
-    float cam_height  = 1.0f;
+int render(void *input)
+{
+	uint32_t width        = ((render_input_t*)input)->width;
+    uint32_t height       = ((render_input_t*)input)->height;
+    uint32_t xstart       = ((render_input_t*)input)->xstart;
+    uint32_t ystart       = ((render_input_t*)input)->ystart;
+    uint32_t xend         = ((render_input_t*)input)->xend;
+    uint32_t yend         = ((render_input_t*)input)->yend;
+    uint32_t *framebuffer = ((render_input_t*)input)->framebuffer;
+	Scene *scene          = ((render_input_t*)input)->scene;
+	
+	SDL_LockMutex(((render_input_t*)input)->mutex);
+	SDL_CondSignal(((render_input_t*)input)->cond);
+	SDL_UnlockMutex(((render_input_t*)input)->mutex);
 
-    Sphere sphere(glm::vec3(0, 0, -1), 0.5);
-
-    Camera *camera = (Camera*) new PerspectiveCamera(pos, forward, right, 60.0f);
-    std::vector<Object*> objects;
-    std::vector<Light*> lights;
-    glm::vec3 light_data[] = {
-        {1, 2, 0},
-        {1, 1, 1}
-    };
-
-    PointLight *light = new PointLight(light_data[0], light_data[1]);
-
-#if 1
-    std::string filename = PLY_DIRECTORY "/isosphere.ply";
-#elif 0
-    std::string filename = PLY_DIRECTORY "/plane.ply";
-#else
-    std::string filename = PLY_DIRECTORY "/bunny.ply";
-#endif
-
-#if 1
-    PlyMesh temp(filename);
-    KDMesh  kdmesh(filename, 10, 1);
-    std::cout << kdmesh.node.find(idx_vec3(585, 586, 587)) << std::endl;
-#else
-    KDMesh  temp(filename, 10, 1);
-#endif
-
-    objects.push_back(&temp);
-
-    Intersections::Intersection info;
-#if TRACE_PIXEL
-    auto i = TRACE_PIXEL_Y;
-    auto j = TRACE_PIXEL_X;
-    Ray initial_ray = camera->Emit(j / (float)width, (height - i) / (float)height);
-    for(auto object : objects)
-    {
-        if(object->Intersects(initial_ray, info))
-        {
-            std::cout << info.triangle.x << " " << info.triangle.y << " " << info.triangle.z << std::endl;
-            framebuffer[i * width + j] = 0xffffffff;
-        }
-        else
-        {
-            framebuffer[i * width + j] = 0x0;
-        }
-    }
-#else
-
-
+    Intersections::Record info;
     for(auto i = ystart; i < yend; i++)
     {
         for(auto j = xstart; j < xend; j++)
         {
-            Ray initial_ray = camera->Emit(j / (float)width, (height - i) / (float)height);
-            for(auto object : objects)
+            Ray initial_ray = scene->camera->Emit(j / (float)width, (height - i) / (float)height);
+            for(auto object : scene->objects)
             {
+				uint32_t &pixel = framebuffer[i * width + j];
                 if(object->Intersects(initial_ray, info))
                 {
-#if 0
-                    glm::vec3 dir = light->origin - info.point;
-                    dir = glm::normalize(dir);
-                    glm::vec3 origin = initial_ray.origin + (info.t - 0.001f) * initial_ray.direction;
-                    Ray shadow_ray = Ray(origin, dir);
-
-                    Colour colour(info.normal);
-                    for(auto occluder : objects)
-                    {
-                        if(occluder->Intersects(shadow_ray, info) && info.t > 1e-6)
-                        {
-                            colour = Colour(glm::vec3(0.0));
-                        }
-                    }
-                    framebuffer[i * width +j] = colour;
-#else
-                    framebuffer[i * width + j] = 0xffffffff;
-#endif
+					if(KDMesh *mesh = dynamic_cast<KDMesh*>(object))
+					{
+						if(mesh->has_normals)
+						{
+							auto v0 = mesh->normals[info.triangle[0]];
+							auto v1 = mesh->normals[info.triangle[1]];
+							auto v2 = mesh->normals[info.triangle[2]];
+							glm::vec3 interp = v0 * info.u + v1 * info.v + v2 * (1 - info.u - info.v);
+							interp += 1.0f;
+							interp /= 2.0f;
+							pixel = RGBA((uint8_t)(interp.x * 255),
+										 (uint8_t)(interp.y * 255),
+										 (uint8_t)(interp.z * 255),
+										 0xff);
+						}
+						else
+						{
+							pixel = RGBA(0xff, 0xff, 0xff, 0xff);
+						}
+					}
+					else
+					{
+						pixel = 0xffffffff;
+					}
                 }
                 else
                 {
-                    framebuffer[i * width + j] = 0x999999ff;
+					pixel = 0x555555ff;
                 }
             }
         }
         static uint32_t count = 0;
     }
-#endif
-    return NULL;
+	return 0;
 }
 
 int main(int argc, char **argv)
 {
-    const uint32_t width  = 640;
-    const uint32_t height = 480;
-    uint32_t framebuffer[height * width];
-    memset(framebuffer, 0x00, sizeof(framebuffer));
+
+	const uint32_t scale  = 2;
+    const uint32_t width  = scale * 640;
+    const uint32_t height = scale * 640;
+    uint32_t *framebuffer = new uint32_t[height * width];
+	for(uint32_t i = 0; i < width * height; i++)
+	{
+		framebuffer[i] = 0x000000ff;
+	}
+	Scene scene(SCENE_DIRECTORY "test.scene");
     Display display = Display("", width, height);
 
 #if TRACE_PIXEL
     auto num_threads          = 1;
 #else
-    auto num_threads          = 9;
+    auto num_threads          = 10;
 #endif
-    pthread_mutex_t mutex     = PTHREAD_MUTEX_INITIALIZER;
-    pthread_cond_t  condition = PTHREAD_COND_INITIALIZER;
+	SDL_mutex *mutex = SDL_CreateMutex();
+	SDL_cond  *cond  = SDL_CreateCond();
     for(auto i = 0; i < num_threads; i++)
     {
+		for(auto j = 0; j < num_threads; j++)
+		{
+			SDL_Thread *render_thread;
+			uint32_t xstart = j       * (width  / num_threads);
+			uint32_t xend   = (j + 1) * (width  / num_threads);
+			uint32_t ystart = i       * (height / num_threads);
+			uint32_t yend   = (i + 1) * (height / num_threads);
+			if(i == num_threads - 1)
+			{
+				yend += height % num_threads;
+			}
+			if(j == num_threads - 1)
+			{
+				xend += width % num_threads;
+			}
+			render_input_t input(width, height, xstart, xend, ystart, yend, framebuffer, cond, mutex, &scene);
 
-        pthread_t render_thread;
-        uint32_t xstart = 0;
-        uint32_t xend   = width;
-        uint32_t ystart = i * (height / num_threads);
-        uint32_t yend   = (i + 1) * (height / num_threads);
-        if(i == num_threads - 1)
-        {
-            yend += height % num_threads;
-        }
-        render_input_t input(width, height, xstart, xend, ystart, yend, framebuffer, condition, mutex);
-        pthread_mutex_lock(&mutex);
-        pthread_create(&render_thread, NULL, render, &input);
-        pthread_cond_wait(&condition, &mutex);
-        pthread_mutex_unlock(&mutex);
+			SDL_LockMutex(mutex);
+			render_thread = SDL_CreateThread(render, "Render Thread", &input);
+			SDL_CondWait(cond, mutex);
+			SDL_UnlockMutex(mutex);
+		}
     }
 
     while(1)

@@ -11,7 +11,7 @@ public:
     AABB(const std::vector<glm::vec3> &vertices); 
     AABB();
 
-    bool Intersects(const Ray &ray, Intersections::Intersection &info);
+    bool Intersects(const Ray &ray, Intersections::Record &info);
     float volume() const
     {
         return abs(max[0] - min[0]) *
@@ -19,6 +19,12 @@ public:
                abs(max[2] - min[2]);
                 
     }
+
+	bool contains(const glm::vec3 &point) const
+	{
+		return min.x   <= point.x && min.y   <= point.y && min.z   <= point.z &&
+			   point.x <  max.x   && point.y <  max.y   && point.z <  max.z;
+	}
 
     glm::vec3 min;
     glm::vec3 max;

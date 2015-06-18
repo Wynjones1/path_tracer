@@ -4,7 +4,7 @@
 
 namespace Intersections
 {
-    struct Intersection;
+    struct Record;
 }
 
 class Ray;
@@ -12,6 +12,6 @@ class Ray;
 class Object
 {
 public:
-    virtual bool Intersects(const Ray &ray, Intersections::Intersection &info) = 0;
+    virtual bool Intersects(const Ray &ray, Intersections::Record &info) = 0;
 };
 #endif

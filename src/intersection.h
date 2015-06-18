@@ -8,7 +8,7 @@
 
 namespace Intersections
 {
-    struct Intersection
+    struct Record
     {
         enum Type
         {
@@ -27,13 +27,15 @@ namespace Intersections
         float tmin, tmax;
     };
 
-    const float EPSILON = 1e-06;
+    const float EPSILON = 1e-06f;
 
-    bool RayTri(const Ray &ray, const idx_vec3 indices, const glm::vec3 vertices[], Intersection &info);
-    bool RaySphere(const Ray &ray, const Sphere &sphere, Intersection &info);
-    bool RayAABB(const Ray &ray, const AABB &aabb, Intersection &info);
-    bool RayKDTree(const Ray &ray, const KDTree &tree, Intersection &info);
-    bool RayKDNode(const Ray &ray, const KDNode &node, const AABB &bounds, const std::vector<glm::vec3> vertices, Intersection &info);
+    bool RayTri(const Ray &ray, const idx_vec3 indices, const glm::vec3 vertices[], Record &info);
+    bool RaySphere(const Ray &ray, const Sphere &sphere, Record &info);
+    bool RayAABB(const Ray &ray, const AABB &aabb, Record &info);
+    bool RayKDTree(const Ray &ray, const KDTree &tree, Record &info);
+    bool RayKDNode(const Ray &ray, const KDNode &node, const AABB &bounds, const std::vector<glm::vec3> &vertices, Record &info);
+
+	extern KDNode *g_trace_node;
 };
 
 #endif

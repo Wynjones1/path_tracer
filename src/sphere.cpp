@@ -6,7 +6,7 @@ Sphere::Sphere(glm::vec3 origin, float radius)
 , radius(radius)
 {}
 
-bool Sphere::Intersects(const Ray &ray, Intersections::Intersection &info)
+bool Sphere::Intersects(const Ray &ray, Intersections::Record &info)
 {
     return Intersections::RaySphere(ray, *this, info);
 }

@@ -10,15 +10,15 @@ AABB::AABB(const glm::vec3 &min, const glm::vec3 &max)
 AABB::AABB()
 {}
 
-bool AABB::Intersects(const Ray &ray, Intersections::Intersection &info)
+bool AABB::Intersects(const Ray &ray, Intersections::Record &info)
 {
     return Intersections::RayAABB(ray, *this, info);
 }
 
 AABB::AABB(const std::vector<glm::vec3> &vertices)
 {
-    min = glm::vec3(std::numeric_limits<float>().max());
-    max = glm::vec3(std::numeric_limits<float>().min());
+	min =  glm::vec3(std::numeric_limits<float>().max());
+    max = -glm::vec3(std::numeric_limits<float>().max());
     for(auto &v : vertices)
     {
         for(auto i = 0; i < 3; i++)
