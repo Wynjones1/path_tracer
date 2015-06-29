@@ -1,7 +1,7 @@
 {
 	"objects" : [
 		{
-		    "ply"    : "bunny_unit.ply",
+		    "ply"    : "bunny.ply",
 		    "center" : true
 		}
 	],
@@ -15,8 +15,11 @@
 	],
 
 	"camera" : {
-		"type" : "perspective",
-		"fov"  : 1.0,
-		"origin" : [0, 0, 1.5]
+		"type"    : "ortho",
+		"width"   : 1.0,
+		"height"  : 1.0,
+		"origin"  : [0, 0, 10],
+		"forward" : [0, 0, -1],
+		"right"   : [1, 0, 0]
 	}
 }

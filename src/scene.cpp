@@ -16,13 +16,25 @@ using namespace rapidjson;
 template<typename T, typename V>
 static Object *read_object(const GenericValue<T, V> &value)
 {
+	bool center = false;
+	if(value.HasMember("center"))
+	{
+		if(value["center"].IsBool())
+		{
+			center = value["center"].GetBool();
+		}
+		else
+		{
+			throw std::exception("scene: center must be boolean value");
+		}
+	}
 	if(value.HasMember("ply"))
 	{
 		auto &ply_filename = value["ply"];
 		if(ply_filename.IsString())
 		{
 			std::string temp = ply_filename.GetString();
-			return new KDMesh(PLY_DIRECTORY + temp);
+			return new KDMesh(PLY_DIRECTORY + temp, 20, 5, center);
 		}
 	}
 	throw std::exception("Could not create object.");

@@ -4,6 +4,7 @@
 #include "sphere.h"
 #include "kdtree.h"
 #include "aabb.h"
+#include "mesh.h"
 #include <algorithm>
 
 namespace Intersections
@@ -12,6 +13,7 @@ namespace Intersections
     {
         enum Type
         {
+			None,
             AABB,
             Mesh,
             Sphere,
@@ -24,7 +26,21 @@ namespace Intersections
         glm::vec3 point;
         glm::vec3 normal;
         idx_vec3  triangle;
+		PlyMesh   *mesh;
         float tmin, tmax;
+
+		Record()
+		: type(None)
+		, t(std::numeric_limits<float>::max())
+		, u(0.0f)
+		, v(0.0f)
+		, backface(false)
+		, point(0.0f)
+		, normal(0.0f)
+		, triangle(0)
+		, tmin(std::numeric_limits<float>::max())
+		, tmax(-std::numeric_limits<float>::max())
+		{}
     };
 
     const float EPSILON = 1e-06f;

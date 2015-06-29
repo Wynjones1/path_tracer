@@ -3,6 +3,20 @@
 #include <string>
 #include <map>
 #include <fstream>
+#include <array>
+#include <algorithm>
+
+union ply_data_t
+{
+	float    f;
+	uint32_t i;
+};
+
+enum ply_data_types
+{
+	PLY_DATA_TYPE_FLOAT,
+	PLY_DATA_TYPE_UINT32,
+};
 
 class Element
 {
@@ -12,21 +26,16 @@ public:
 	, list(false)
 	{}
 
-	std::vector<std::pair<std::string,std::vector<std::string>>> properties;
-	std::vector<std::vector<std::string>> list_data;
+	std::map<std::string, ply_data_types>          types;
+	std::map<std::string, std::vector<ply_data_t>> properties;
+	std::vector<std::vector<ply_data_t>>           list_data;
+	std::vector<std::string>                       property_order;
 	bool list;
 	uint32_t count;
 
-	std::string get_property(std::string property_name, uint32_t index)
+	ply_data_t get_property(std::string property_name, uint32_t index)
 	{
-		for(auto &pair : properties)
-		{
-			if(pair.first == property_name)
-			{
-				return pair.second[index];
-			}
-		}
-		throw std::exception("could not find property");
+		return properties[property_name][index];
 	}
 
 	bool has_property(std::string property_name)
@@ -49,94 +58,144 @@ public:
 	{
 		std::ifstream stream(filename);
 		stream.exceptions(std::ios::eofbit);
-		std::string input;
-		std::string current_element;
-		std::vector<std::string> element_order;
-		uint32_t element_count;
-		stream >> input;
-		if(input != "ply")
+		try
 		{
-			throw std::exception("File is not a valid ply file.");
-		}
-		while(input != "end_header")
-		{
+			std::string input;
+			std::string current_element;
+			std::vector<std::string> element_order;
+			uint32_t element_count;
 			stream >> input;
-			if(input == "comment")
+			if(input != "ply")
 			{
-				char buffer[1024];
-				stream.getline(buffer, 1024);
+				throw std::exception("File is not a valid ply file.");
 			}
-			else if(input == "format")
+			while(input != "end_header")
 			{
 				stream >> input;
-				if(input == "ascii")
+				if(input == "comment")
 				{
-					format = ASCII;
+					char buffer[1024];
+					stream.getline(buffer, 1024);
 				}
-				else if(input == "binary")
+				else if(input == "format")
 				{
-					format = BINARY;
+					stream >> input;
+					if(input == "ascii")
+					{
+						format = ASCII;
+					}
+					else if(input == "binary")
+					{
+						format = BINARY;
+					}
+					else
+					{
+						throw std::exception("Invalid format");
+					}
+					stream >> version;
 				}
-				else
+				else if(input == "element")
 				{
-					throw std::exception("Invalid format");
+					stream >> current_element;
+					stream >> element_count;
+					elements[current_element] = Element(element_count);
+					element_order.push_back(current_element);
 				}
-				stream >> version;
+				else if(input == "property")
+				{
+					std::string property_type;
+					std::string property_name;
+					stream >> property_type;
+
+					if(property_type == "list")
+					{
+						stream >> input; //count type
+						stream >> input; //value type
+						elements[current_element].list = true;
+					}
+					stream >> property_name; //data type
+					auto &elem = elements[current_element];
+					elem.properties[property_name] = std::vector<ply_data_t>();
+					if( property_type == "char" || property_type == "uchar"  ||
+						property_type == "short"|| property_type == "ushort" ||
+						property_type == "int"  || property_type == "uint")
+					{
+						elem.types[property_name] = PLY_DATA_TYPE_UINT32;
+					}
+					else if(property_type == "float" || property_type == "double")
+					{
+						elem.types[property_name] = PLY_DATA_TYPE_FLOAT;
+					}
+					else if(property_type == "list")
+					{
+						elem.types[property_name] = PLY_DATA_TYPE_UINT32;
+					}
+					else
+					{
+						throw std::exception("invalid data type in ply file");
+					}
+					elem.property_order.push_back(property_name);
+					elem.properties[property_name].resize(elem.count);
+				}
 			}
-			else if(input == "element")
+			/* read the element data */
+			for(auto &elem_name : element_order)
 			{
-				stream >> current_element;
-				stream >> element_count;
-				elements[current_element] = Element(element_count);
-				element_order.push_back(current_element);
-			}
-			else if(input == "property")
-			{
-				std::string property_type;
-				std::string property_name;
-				stream >> property_type;
-				if(property_type == "list")
+				auto &elem = elements[elem_name];
+				for(uint32_t i = 0; i < elem.count; i++)
 				{
-					stream >> input; //count type
-					stream >> input; //value type
-					elements[current_element].list = true;
+					if(elem.list)
+					{
+						if(elem.properties.size() != 1)
+						{
+							throw std::exception("More than one property specified, one of which is a list.");
+						}
+						auto &prop = elem.property_order[0];
+						uint32_t count;
+						stream >> count;
+						elem.list_data.push_back(std::vector<ply_data_t>());
+						elem.list_data.back().resize(count);
+		
+						for(uint32_t j = 0; j < count; j++)
+						{
+							ply_data_types t = elem.types[prop];
+							switch(t)
+							{
+							case PLY_DATA_TYPE_FLOAT:
+								stream >> elem.list_data[i][j].f;
+								break;
+							case PLY_DATA_TYPE_UINT32:
+								stream >> elem.list_data[i][j].i;
+								break;
+							}
+						}
+					}
+					else
+					{
+						for(auto &prop : elem.property_order)
+						{
+							ply_data_types t = elem.types[prop];
+							switch(t)
+							{
+							case PLY_DATA_TYPE_FLOAT:
+								stream >> elem.properties[prop][i].f;
+								break;
+							case PLY_DATA_TYPE_UINT32:
+								stream >> elem.properties[prop][i].i;
+								break;
+							}
+						}
+					}
 				}
-				stream >> property_name; //data type
-				auto temp = std::pair<std::string,std::vector<std::string>>();
-				temp.first = property_name;
-				elements[current_element].properties.push_back(temp);
 			}
 		}
-		for(auto &elem_name : element_order)
+		catch(std::ios_base::failure &ex)
 		{
-			auto &elem = elements[elem_name];
-			for(uint32_t i = 0; i < elem.count; i++)
-			{
-				if(elem.list)
-				{
-					if(elem.properties.size() != 1)
-					{
-						throw std::exception("More than one property specified, one of which is a list.");
-					}
-					auto &prop = elem.properties[0];
-					uint32_t count;
-					stream >> count;
-					elem.list_data.push_back(std::vector<std::string>());
-					for(uint32_t i = 0; i < count; i++)
-					{
-						stream >> input;
-						elem.list_data.back().push_back(input);
-					}
-				}
-				else
-				{
-					for(auto &prop : elem.properties)
-					{
-						stream >> input;
-						prop.second.push_back(input);
-					}
-				}
-			}
+			std::cerr << ex.what() << std::endl;
+		}
+		catch(std::exception &ex)
+		{
+			std::cerr << ex.what() << std::endl;
 		}
 	}
 

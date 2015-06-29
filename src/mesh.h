@@ -36,7 +36,6 @@ public:
     KDMesh(std::string filename, uint32_t max_depth = 10, uint32_t min_elems = 3, bool center = false);
 
     bool Intersects(const Ray &ray, Intersections::Record &info);
-
     KDNode node;
 };
 

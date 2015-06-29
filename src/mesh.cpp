@@ -1,59 +1,62 @@
 #include "mesh.h"
 #include "intersection.h"
 #include "ply.h"
+#include "SDL.h"
 
 PlyMesh::PlyMesh(std::string filename, bool center)
 	: has_normals(false)
 {
 	PLY ply(filename);
-	auto element = ply.elements["vertex"];
+	auto &vertex_element = ply.elements["vertex"];
 	float x, y, z;
-	if(!element.has_property("x") &&
-	   !element.has_property("y") &&
-	   !element.has_property("z"))
+	if(!vertex_element.has_property("x") &&
+	   !vertex_element.has_property("y") &&
+	   !vertex_element.has_property("z"))
 	{
 		throw std::exception("ply file must contain 3 vertex componenents");
 	}
-	for(uint32_t i = 0; i < element.count; i++)
+	vertices.resize(vertex_element.count);
+	for(uint32_t i = 0; i < vertex_element.count; i++)
 	{
-		x = std::stof(element.get_property("x", i));
-		y = std::stof(element.get_property("y", i));
-		z = std::stof(element.get_property("z", i));
-		vertices.push_back(glm::vec3(x, y, z));
+		x = vertex_element.get_property("x", i).f;
+		y = vertex_element.get_property("y", i).f;
+		z = vertex_element.get_property("z", i).f;
+		vertices[i] = glm::vec3(x, y, z);
 	}
-	if(element.has_property("nx") &&
-	   element.has_property("ny") &&
-	   element.has_property("nz"))
+	if(vertex_element.has_property("nx") &&
+	   vertex_element.has_property("ny") &&
+	   vertex_element.has_property("nz"))
 	{
 		has_normals = true;
-		for(uint32_t i = 0; i < element.count; i++)
+		for(uint32_t i = 0; i < vertex_element.count; i++)
 		{
-			x = std::stof(element.get_property("nx", i));
-			y = std::stof(element.get_property("ny", i));
-			z = std::stof(element.get_property("nz", i));
+			x = vertex_element.get_property("nx", i).f;
+			y = vertex_element.get_property("ny", i).f;
+			z = vertex_element.get_property("nz", i).f;
 			normals.push_back(glm::vec3(x, y, z));
 		}
 	}
-	element = ply.elements["face"];
+	auto &face_element = ply.elements["face"];
 	idx_vec3 face;
-	for(uint32_t i =0 ; i < element.count; i++)
+	faces.resize(face_element.count);
+	for(uint32_t i =0 ; i < face_element.count; i++)
 	{
-		if(element.list_data[i].size() == 3)
+		if(face_element.list_data[i].size() == 3)
 		{
-			face[0] = std::stoi(element.list_data[i][0]);
-			face[1] = std::stoi(element.list_data[i][1]);
-			face[2] = std::stoi(element.list_data[i][2]);
+			face[0] = face_element.list_data[i][0].i;
+			face[1] = face_element.list_data[i][1].i;
+			face[2] = face_element.list_data[i][2].i;
 			faces.push_back(face);
 		}
-		else if(element.list_data[i].size() == 4)
+		else if(face_element.list_data[i].size() == 4)
 		{
-			face[0] = std::stoi(element.list_data[i][0]);
-			face[1] = std::stoi(element.list_data[i][1]);
-			face[2] = std::stoi(element.list_data[i][2]);
+			face[0] = face_element.list_data[i][0].i;
+			face[1] = face_element.list_data[i][1].i;
+			face[2] = face_element.list_data[i][2].i;
 			faces.push_back(face);
-			face[0] = std::stoi(element.list_data[i][2]);
-			face[1] = std::stoi(element.list_data[i][3]);
-			face[2] = std::stoi(element.list_data[i][0]);
+			face[0] = face_element.list_data[i][2].i;
+			face[1] = face_element.list_data[i][3].i;
+			face[2] = face_element.list_data[i][0].i;
 			faces.push_back(face);
 		}
 		else
@@ -61,9 +64,9 @@ PlyMesh::PlyMesh(std::string filename, bool center)
 			throw std::exception("only triangles or quads are supported.");
 		}
 	}
-	glm::vec3 mean(0.0);
 	if(center)
 	{
+		glm::vec3 mean(0.0);
 		for(const auto &v : vertices)
 		{
 			mean += v;
@@ -107,5 +110,11 @@ KDMesh::KDMesh(std::string filename, uint32_t max_depth, uint32_t min_elems, boo
 
 bool KDMesh::Intersects(const Ray &ray, Intersections::Record &info)
 {
-    return Intersections::RayKDNode(ray, node, aabb, vertices, info);
+    if(Intersections::RayKDNode(ray, node, aabb, vertices, info))
+	{
+		info.type = Intersections::Record::Mesh;
+		info.mesh = this;
+		return true;
+	}
+	return false;
 }
