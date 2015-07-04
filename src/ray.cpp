@@ -10,6 +10,12 @@ Ray::Ray(const glm::vec3 &origin, const glm::vec3 &direction)
 , direction(direction)
 {}
 
+
+glm::vec3 Ray::point_at(float t) const
+{
+	return origin + direction * t;
+}
+
 std::ostream &operator<<(std::ostream &stream, const Ray &ray)
 {
     stream << "Ray("

@@ -1,9 +1,7 @@
 {
 	"objects" : [
-		{
-		    "ply"    : "bunny_unit.ply",
-		    "center" : true
-		}
+		{"ply" : "floor.ply"},
+		{"ply" : "bunny_unit.ply"}
 	],
 
 	"lights" : [
@@ -17,6 +15,6 @@
 	"camera" : {
 		"type" : "perspective",
 		"fov"  : 1.0,
-		"origin" : [0, 0, 1.5]
+		"origin" : [0, 0.1, 2.5]
 	}
 }

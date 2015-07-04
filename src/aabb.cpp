@@ -15,6 +15,12 @@ bool AABB::Intersects(const Ray &ray, Intersections::Record &info)
     return Intersections::RayAABB(ray, *this, info);
 }
 
+
+Colour AABB::Shade(const Ray &ray, const Intersections::Record &info, Scene &scene)
+{
+	return Colour(1.0, 1.0, 1.0);
+}
+
 AABB::AABB(const std::vector<glm::vec3> &vertices)
 {
 	min =  glm::vec3(std::numeric_limits<float>().max());

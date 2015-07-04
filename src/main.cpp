@@ -104,40 +104,7 @@ int render(void *input)
 			uint32_t &pixel = framebuffer[i * width + j];
 			if(scene->Intersects(initial_ray, info))
 			{
-				Ray shadow_ray;
-				shadow_ray.origin = initial_ray.origin + initial_ray.direction * (info.t - 0.01f);
-				for(const auto light : scene->lights)
-				{
-					if(const PointLight *p = dynamic_cast<const PointLight*>(light))
-					{
-						shadow_ray.direction = glm::normalize(p->origin - shadow_ray.origin);
-						if(scene->Intersects(shadow_ray, shadow_record))
-						{
-							pixel = 0x000000ff;
-						}
-						else
-						{
-							if(info.mesh->has_normals)
-							{
-								auto v0 = info.mesh->normals[info.triangle[0]] * (1 -info.u - info.v);
-								auto v1 = info.mesh->normals[info.triangle[1]] * info.u;
-								auto v2 = info.mesh->normals[info.triangle[2]] * info.v;
-								glm::vec3 interp = v0 + v1 + v2;
-								interp += 1.0f;
-								interp /= 2.0f;
-								pixel = RGBA((uint8_t)(interp.x * 255),
-											 (uint8_t)(interp.y * 255),
-											 (uint8_t)(interp.z * 255),
-											 0xff);
-							}
-							else
-							{
-								pixel = RGBA(0xff, 0xff, 0xff, 0xff);
-							}
-						}
-					}
-				}
-
+				pixel = scene->Shade(initial_ray, info, *scene);
 			}
             else
             {
@@ -148,25 +115,6 @@ int render(void *input)
     }
 	return 0;
 }
-#if 0
-						if(mesh->has_normals)
-						{
-							auto v0 = mesh->normals[info.triangle[0]];
-							auto v1 = mesh->normals[info.triangle[1]];
-							auto v2 = mesh->normals[info.triangle[2]];
-							glm::vec3 interp = v0 * info.u + v1 * info.v + v2 * (1 - info.u - info.v);
-							interp += 1.0f;
-							interp /= 2.0f;
-							pixel = RGBA((uint8_t)(interp.x * 255),
-										 (uint8_t)(interp.y * 255),
-										 (uint8_t)(interp.z * 255),
-										 0xff);
-						}
-						else
-						{
-							pixel = RGBA(0xff, 0xff, 0xff, 0xff);
-						}
-#endif
 
 int main(int argc, char **argv)
 {
@@ -179,7 +127,10 @@ int main(int argc, char **argv)
 	{
 		framebuffer[i] = 0x000000ff;
 	}
+	auto start_time = SDL_GetTicks();
 	Scene scene(SCENE_DIRECTORY "test.scene");
+	std::cout << "Total time: " << (SDL_GetTicks() - start_time) / 1000.0f << " seconds." << std::endl;
+	return 0;
     Display display = Display("", width, height);
 
 #if TRACE_PIXEL

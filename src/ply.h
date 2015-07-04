@@ -191,11 +191,11 @@ public:
 		}
 		catch(std::ios_base::failure &ex)
 		{
-			std::cerr << ex.what() << std::endl;
+			std::cerr << "exception reading file file: " << filename << ":" << ex.what() << std::endl;
 		}
 		catch(std::exception &ex)
 		{
-			std::cerr << ex.what() << std::endl;
+			std::cerr << "exception reading file file: " << filename << ":" << ex.what() << std::endl;
 		}
 	}
 

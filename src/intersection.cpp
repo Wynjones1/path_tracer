@@ -262,7 +262,7 @@ namespace Intersections
         {
             for(auto &face : tree.faces)
             {
-                if(RayTri(ray, face, tree.vertices.data(), info))
+                if(RayTri(ray, face, tree.vertices.data(), info) && info.t > 0.1f)
                 {
                     return true;
                 }

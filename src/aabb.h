@@ -12,6 +12,7 @@ public:
     AABB();
 
     bool Intersects(const Ray &ray, Intersections::Record &info);
+	Colour Shade(const Ray &ray, const Intersections::Record &info, Scene &scene);
     float volume() const
     {
         return abs(max[0] - min[0]) *

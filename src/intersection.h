@@ -26,7 +26,7 @@ namespace Intersections
         glm::vec3 point;
         glm::vec3 normal;
         idx_vec3  triangle;
-		PlyMesh   *mesh;
+		Object    *object;
         float tmin, tmax;
 
 		Record()

@@ -1,6 +1,7 @@
 #include "mesh.h"
 #include "intersection.h"
 #include "ply.h"
+#include "scene.h"
 #include "SDL.h"
 
 PlyMesh::PlyMesh(std::string filename, bool center)
@@ -93,14 +94,49 @@ bool PlyMesh::Intersects(const Ray &ray, Intersections::Record &info)
             {
                 if(temp_info.t < info.t)
                 {
-                    retval = true;
-                    info = temp_info;
+					info.object   = this;
+                    retval        = true;
+                    info          = temp_info;
                     info.triangle = face;
                 }
             }
         }
     }
     return retval;
+}
+
+
+Colour PlyMesh::Shade(const Ray &ray, const Intersections::Record &info, Scene &scene)
+{
+	glm::vec3 normal(1.0);
+	if(has_normals)
+	{
+		auto v0 = normals[info.triangle[0]] * (1 -info.u - info.v);
+		auto v1 = normals[info.triangle[1]] * info.u;
+		auto v2 = normals[info.triangle[2]] * info.v;
+		normal = v0 + v1 + v2;
+		normal += 1.0f;
+		normal /= 2.0f;
+		if(shadow)
+		{
+			glm::vec3 point = ray.point_at(info.t);
+			for(const auto *light : scene.lights)
+			{
+				//calculate direction to light.
+				if(const PointLight *plight = dynamic_cast<const PointLight*>(light))
+				{
+					Ray new_ray = Ray(point, glm::normalize(plight->origin - point));
+					Intersections::Record shadow_record;
+					if(scene.Intersects(new_ray, shadow_record))
+					{
+						return Colour(0, 0, 0);
+					}
+				}
+			}
+
+		}
+	}
+	return normal;
 }
 
 KDMesh::KDMesh(std::string filename, uint32_t max_depth, uint32_t min_elems, bool center)
@@ -113,7 +149,7 @@ bool KDMesh::Intersects(const Ray &ray, Intersections::Record &info)
     if(Intersections::RayKDNode(ray, node, aabb, vertices, info))
 	{
 		info.type = Intersections::Record::Mesh;
-		info.mesh = this;
+		info.object = this;
 		return true;
 	}
 	return false;

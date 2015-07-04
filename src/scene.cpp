@@ -10,13 +10,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "glm.hpp"
+#include "SDL.h"
 
 using namespace rapidjson;
+#define SCENE_VERBOSE 1
 
 template<typename T, typename V>
 static Object *read_object(const GenericValue<T, V> &value)
 {
+#if SCENE_VERBOSE
+	std::cout << "reading object..." << std::endl;
+	uint32_t start_time = SDL_GetTicks();
+#endif
 	bool center = false;
+	Object *out = NULL;
 	if(value.HasMember("center"))
 	{
 		if(value["center"].IsBool())
@@ -34,10 +41,17 @@ static Object *read_object(const GenericValue<T, V> &value)
 		if(ply_filename.IsString())
 		{
 			std::string temp = ply_filename.GetString();
-			return new KDMesh(PLY_DIRECTORY + temp, 20, 5, center);
+			out = new KDMesh(PLY_DIRECTORY + temp, 20, 5, center);
 		}
 	}
-	throw std::exception("Could not create object.");
+	if(!out)
+	{
+		throw std::exception("Could not create object.");
+	}
+#if SCENE_VERBOSE
+	std::cout << "took " << (SDL_GetTicks() - start_time) / 1000.0f << " seconds." << std::endl;
+#endif
+	return out;
 }
 
 template<typename T, typename V>
@@ -208,4 +222,10 @@ bool Scene::Intersects(const Ray &ray, Intersections::Record &info)
 		}
 	}
 	return found;
+}
+
+
+Colour Scene::Shade(const Ray &ray, const Intersections::Record &info, Scene &scene)
+{
+	return info.object->Shade(ray, info, scene);
 }

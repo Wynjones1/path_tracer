@@ -14,6 +14,10 @@
 class Mesh : public Object
 {
 public:
+	Mesh() : shadow(true)
+	{}
+
+	bool shadow;
 };
 
 class PlyMesh: public Mesh
@@ -21,7 +25,8 @@ class PlyMesh: public Mesh
 public:
     PlyMesh(std::string filename, bool center = false);
 
-    bool Intersects(const Ray &ray, Intersections::Record &info);
+    bool Intersects(const Ray &ray, Intersections::Record &info);	
+	Colour Shade(const Ray &ray, const Intersections::Record &info, Scene &scene);
 
     std::vector<idx_vec3>  faces;
     std::vector<glm::vec3> vertices;
